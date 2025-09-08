@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Mvc;
+using Task = Task_Manager_Backend.TaskManager;
 
 namespace Task_Manager_Backend.Controllers
 {
@@ -19,7 +21,7 @@ namespace Task_Manager_Backend.Controllers
         }
 
         [HttpGet(Name = "GetWeatherForecast")]
-        public IEnumerable<WeatherForecast> Get()
+        public IEnumerable<WeatherForecast> GetWeatherForecast()
         {
             return Enumerable.Range(1, 5).Select(index => new WeatherForecast
             {
@@ -28,6 +30,26 @@ namespace Task_Manager_Backend.Controllers
                 Summary = Summaries[Random.Shared.Next(Summaries.Length)]
             })
             .ToArray();
+        }
+
+        private static readonly ConcurrentDictionary<int, Task> _tasks = new();
+        private static int _nextId = 1;
+
+        [HttpGet("tasks")]
+        public ActionResult<IEnumerable<Task>> GetTasks()
+        {
+            return Ok(_tasks.Values);
+        }
+
+        [HttpPost("tasks")]
+        public ActionResult<Task> PostTask([FromBody] Task newTask)
+        {
+            if (string.IsNullOrWhiteSpace(newTask.Title))
+                return BadRequest("Title is required.");
+
+            newTask.Id = _nextId++;
+            _tasks[newTask.Id] = newTask;
+            return CreatedAtAction(nameof(GetTasks), new { id = newTask.Id }, newTask);
         }
     }
 }
